@@ -58,6 +58,74 @@ class SpikingNorm(nn.Module):
         self.scale.data = torch.Tensor([1.0]).to(self.scale.device)
         return x
 
+class SpikingNormInv(nn.Module):
+    def __init__(self, momentum=0.1, scale=True, sigmoid=True ,eps=1e-6):
+        super(SpikingNormInv, self).__init__()
+        self.sigmoid = sigmoid
+        self.eps = eps
+        self.lock_max = False
+        if scale:
+            self.scale = Parameter(torch.Tensor([1.0]))
+        else:
+            self.register_buffer('scale', torch.ones(1))
+        if self.sigmoid:
+            self.scale.data *= 10.0
+        self.momentum = momentum
+        self.register_buffer('running_max', torch.ones(1))
+
+    def calc_scale(self):
+        if self.sigmoid:
+            scale = torch.sigmoid(self.scale)
+        else:
+            scale = torch.abs(self.scale)
+        return scale
+
+    def calc_v_th(self):
+        return (self.running_max + self.eps) / self.calc_scale()
+
+    def forward(self, x):
+        if self.training and (not self.lock_max):
+            self.running_max = (1 - self.momentum) * self.running_max + self.momentum * torch.max(F.relu(x)).item()
+        x = torch.clamp( F.relu(x) / self.calc_v_th(), min=0.0, max=1.0)
+        # x = F.relu(x)
+        return x
+
+    def extra_repr(self):
+        if self.sigmoid:
+            return 'v_th={}, scale={}, running_max={}'.format(
+                self.calc_v_th(), torch.sigmoid(self.scale.data), self.running_max.data
+            )
+        else:
+            return 'v_th={}, scale={}, running_max={}'.format(
+                self.calc_v_th(), torch.abs(self.scale.data), self.running_max.data
+            )
+
+    def extract_running_max(self):
+        x = self.running_max.data
+        self.running_max.data = self.running_max.data / x
+        return x
+
+    def extract_scale(self):
+        x = self.scale.data
+        self.running_max.data = self.running_max.data / x
+        self.scale.data = torch.Tensor([1.0]).to(self.scale.device)
+        return x
+
+
+def replace_relu_by_spikingnorm_inv(model,scale=True,share_scale=None):
+    for name, module in model._modules.items():
+        if hasattr(module,"_modules"):
+            model._modules[name] = replace_relu_by_spikingnorm_inv(module,scale,share_scale)
+        if 'relu' in module.__class__.__name__.lower():
+            if not scale:
+                model._modules[name] = SpikingNormInv(scale=False)
+            else:
+                if share_scale is None:
+                    model._modules[name] = SpikingNormInv()
+                else:
+                    model._modules[name] = SpikingNormInv()
+                    model._modules[name].scale = share_scale
+    return model
 
 def replace_relu_by_spikingnorm(model,scale=True,share_scale=None):
     for name, module in model._modules.items():
