@@ -83,6 +83,8 @@ for e in range(0, epoch):
             print('thres', m.calc_v_th().data, 'scale', m.calc_scale().data, 'scale_t',m.scale.data)
 ```
 
+For trained models, please download from：https://pan.baidu.com/s/1EoEQi_4gY3buKF9ZLi3inQ (passward：JKPA)
+
 Finally, with SpikingJelly, you can simulate the trained model, here we show the inference results of three trained models: ``vgg16_cifar10_[0.100_84.440_5.808]``,``vgg16_cifar10_[0.100_86.840_6.528 ]``,``vgg16_cifar10_[0.100_87.880_7.643]``.
 Please open dir ``train_vgg16_cifar10``.
 
