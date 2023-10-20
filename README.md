@@ -1,4 +1,4 @@
-# Optimal ANN-SNN Conversion for Fast and Accurate Inferencein Deep Spiking Neural Networks
+# Optimal ANN-SNN Conversion for Fast and Accurate Inference in Deep Spiking Neural Networks
 This directory contains the code of this paper.
 
 To sum up, this paper proposes a method for training ANN, which makes ANN closer to SNN. 
